@@ -1,0 +1,36 @@
+# Configuration for the "lucentAndShiny" apps.
+
+database:
+    user: grindel
+    schema: lucent
+    socket: /home/grindel/Entwicklung/lucentLIMS/mariadb/tmp/mariadb.sock
+
+
+
+shiny:
+    query dir: /home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/SQL/
+
+
+
+modules:
+    organisations:
+        title: Organisations
+        table:
+            name: organisation
+            friendly names:
+                Company Number: id_organisation
+                Company Name: identifier
+                Shorthand: short_identifier
+                Connection: connection
+        sql: QUERY_ORGANISATIONS.SQL
+        context menu:
+            title: Manage Organisations
+
+    people:
+        title: Manage Employees, Customers, etc.
+        sql: QUERY_PEOPLE.SQL
+        context menu:
+            title: Manage Contacts
+            button:
+                name: add_contact
+                caption: Add Contact
