@@ -28,8 +28,8 @@ table.cnf <- yaml::read_yaml(
 )
 
 # Get a list of all unix users.
-ua.lst <- system("awk -F: '$3 >= 1000 {print $1}' /etc/passwd", intern = TRUE)
-ua.lst <- ua.lst[which(!ua.lst == "nobody")]  # The "nobody" user should not be available.
+ua.v <- system("awk -F: '$3 >= 1000 {print $1}' /etc/passwd", intern = TRUE)
+ua.v <- ua.v[which(!ua.v == "nobody")]  # The "nobody" user should not be available.
 
 
 
@@ -42,6 +42,9 @@ message("lucentLIMS is running for user: ", unix_user.chr)
 
 ### --- Load helper functions ----------------------------------------------------------------------
 source("db_intop.R")
+source("navbar_menu.R")
+source("module_selection.R")
+source("dialogs.R")
 
 
 
@@ -59,55 +62,7 @@ mariadb.con <- pool::dbPool(
 dw.ui <- shiny::navbarPage(
     "lucentLIMS"
   , id = "main_bar"
-  , shiny::navbarMenu(
-        "Modules"
-
-      , shiny::tabPanel(
-            "Samples"
-          , shiny::titlePanel("Sample")
-          , shiny::mainPanel(DT::DTOutput("samples.table"))
-          , shiny::sidebarPanel(
-                shiny::actionButton("samples.add_record", "Add Sample", icon = icon("plus"))
-            )
-          , icon = shiny::icon("vials")
-        )
-
-      , shiny::tabPanel(
-            "Organisations"
-          , shiny::mainPanel(DT::DTOutput("organisations.table"))
-          , shiny::sidebarPanel(
-                shiny::h4("General")
-              , shiny::actionButton("organisations.add_record", "Add Record", icon = icon("plus"))
-              , shiny::actionButton("organisations.del_record", "Delete Selected", icon = icon("minus"))
-              , shiny::h4("SQL-Information")
-              , shiny::tags$style(
-                  shiny::HTML(
-                  "
-                      .monospace-textarea {
-                          font-family: 'Hack', monospace;
-                      }
-                  ")
-                )
-              , shiny::div(
-                    class = "monospace-textarea"
-                  , shiny::textAreaInput("organisations.sql_info", NULL, rows = 7)
-                )
-            )
-          , icon = shiny::icon("building")
-        )
-
-      , shiny::tabPanel(
-            "Contacts"
-          , shiny::mainPanel(DT::DTOutput("contacts.table"))
-          , shiny::sidebarPanel(
-                shiny::h4("General")
-              , shiny::actionButton("contacts.add_record", "Add Record", icon = icon("plus"))
-              , shiny::actionButton("contacts.del_record", "Delete Selected", icon = icon("minus"))
-            )
-          , icon = shiny::icon("address-book")
-        )
-
-    )
+  , module_selection.ui()
 
   , shiny::tabPanel(
         "Plots"
@@ -268,24 +223,42 @@ dw.srv <- function(input, output, session) {
     # Contacts: Add record.
     shiny::observeEvent(
         input$contacts.add_record
-      , {
-            shiny::showModal(source("./snippets/contacts/add_record.R", local = TRUE))
-        }
+      , { shiny::showModal(contacts.AddContact(ua.v)) }
     )
 
     shiny::observeEvent(
         input$contacts.add_record.add
       , {
-            reactive.values$statement <- sprintf(
-                "INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('%s', '%s', '%s')"
-              , input$contacts.add_record.given_name
-              , input$contacts.add_record.surname
-              , input$contacts.add_record.unix_account
-            )
+
+            if(input$contacts.add_record.unix_account == "n.a.") {
+                reactive.values$statement <- sprintf(
+                    "INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('%s', '%s')"
+                  , input$contacts.add_record.given_name
+                  , input$contacts.add_record.surname
+                )
+            } else {
+                reactive.values$statement <- sprintf(
+                    "INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('%s', '%s', '%s')"
+                  , input$contacts.add_record.given_name
+                  , input$contacts.add_record.surname
+                  , input$contacts.add_record.unix_account
+                )
+            }
 
             shiny::removeModal()
         }
     )
+
+    shiny::observeEvent(
+        input$contacts.del_record
+      , {
+            sel.v <- input$contacts.table_rows_selected
+            print(
+                reactive.values$df[sel.v, "id_person"]
+            )
+        }
+    )
+
 
     shiny::observeEvent(
         reactive.values$statement
@@ -298,8 +271,6 @@ dw.srv <- function(input, output, session) {
             , sep = " · "
           )
 
-          log.lst <-
-
           fileConn <- file("/home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/log/lucentLIMS.log")
           writeLines(log_line.chr, fileConn)
           close(fileConn)
@@ -309,7 +280,7 @@ dw.srv <- function(input, output, session) {
             , error = function(e) {
                   message("SQL error: ", e)
                   reactive.values$status_message <- e$message
-                  shiny::showModal(source("./snippets/sql_warning.R", local = TRUE))
+                  shiny::showModal( WarnAboutBadSQL(reactive.values) )
               }
             , warning = function(w) {
                   message("SQL warning: ", w$message)

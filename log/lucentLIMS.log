@@ -1,1 +1,1 @@
-2023.10.09 22:15:12 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Redhsoft Inc.' WHERE `id_organisation` = 8;
+2023.10.10 14:55:58 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('Mario "The Skazdzude"', 'Schaupp', '')
