@@ -9,7 +9,7 @@ database:
 
 shiny:
     query dir: /home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/SQL/
-
+    snippets dir: /home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/snippets/
 
 
 modules:
@@ -34,3 +34,14 @@ modules:
             button:
                 name: add_contact
                 caption: Add Contact
+
+    contacts:
+        title: Contacts
+        table:
+            name: organisation
+            friendly names:
+                Company Number: id_organisation
+                Company Name: identifier
+                Shorthand: short_identifier
+                Connection: connection
+        sql: GET_ADDRESSES.SQL
