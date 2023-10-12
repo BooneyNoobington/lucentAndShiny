@@ -10,6 +10,7 @@ database:
 shiny:
     query dir: /home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/SQL/
     snippets dir: /home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/snippets/
+    time format: "%Y.%m.%d %T"
 
 
 modules:

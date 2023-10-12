@@ -11,8 +11,6 @@ library(DBI)            # Database related functions.
 library(RMariaDB)       # Connecting to a datasbase.
 library(DT)             # Display tables in a nicer format.
 library(yaml)           # Getting the systems configuration.
-library(dplyr)
-library(dbplyr)
 library(pool)
 library(readr)
 library(stringr)
@@ -40,11 +38,12 @@ message("lucentLIMS is running for user: ", unix_user.chr)
 
 
 
-### --- Load helper functions ----------------------------------------------------------------------
+### --- Modules and Helpers ------------------------------------------------------------------------
 source("db_intop.R")
 source("navbar_menu.R")
 source("module_selection.R")
 source("dialogs.R")
+source("server_modules.R")
 
 
 
@@ -89,7 +88,7 @@ dw.ui <- shiny::navbarPage(
 dw.srv <- function(input, output, session) {
 
     # The central element of the data view is this table.
-    reactive.values <- reactiveValues(
+    globals <- reactiveValues(
         df = NULL
       , query = NULL
       , statement = NULL
@@ -98,53 +97,55 @@ dw.srv <- function(input, output, session) {
       , status_message = paste("User:", unix_user.chr, "Database connected")
     )
 
+    df <- reactiveVal(NULL)
+
 
     # Observe the users choice of a module.
     shiny::observe({
 
             if (shiny::req(input$main_bar) == "Organisations") {
 
-                reactive.values$active_module <- "organisations"
+                globals$active_module <- "organisations"
 
-                reactive.values$log <- paste0("Current tab is: ", reactive.values$active_module)
+                globals$log <- paste0("Current tab is: ", globals$active_module)
 
                 # Get the data from the database.
                 query.path <- paste0(
-                    sys.cnf$shiny[["query dir"]], "/modules/", reactive.values$active_module
+                    sys.cnf$shiny[["query dir"]], "/modules/", globals$active_module
                   , "/"
-                  , sys.cnf$modules[[reactive.values$active_module]]$sql
+                  , sys.cnf$modules[[globals$active_module]]$sql
                 )
 
                 query.chr <- paste(readLines(query.path), collapse = "\n")
 
-                reactive.values$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
-                reactive.values$log <- paste0("Getting query from: ", query.path)
+                globals$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
+                globals$log <- paste0("Getting query from: ", query.path)
 
                 shiny::updateTextInput(
                     session, "organisations.sql_info", value = paste(readLines(query.path), collapse = "\n")
                 )
 
                 # Take not of the original column names.
-                reactive.values$names <- names(reactive.values$dt)
+                globals$names <- names(globals$dt)
             }
 
             if (shiny::req(input$main_bar) == "Contacts") {
 
-                reactive.values$active_module <- "contacts"
+                globals$active_module <- "contacts"
 
-                reactive.values$log <- paste0("Current tab is: ", reactive.values$active_module)
+                globals$log <- paste0("Current tab is: ", globals$active_module)
 
                 # Get the data from the database.
                 query.path <- paste0(
-                    sys.cnf$shiny[["query dir"]], "/modules/", reactive.values$active_module
+                    sys.cnf$shiny[["query dir"]], "/modules/", globals$active_module
                   , "/"
-                  , sys.cnf$modules[[reactive.values$active_module]]$sql
+                  , sys.cnf$modules[[globals$active_module]]$sql
                 )
 
                 query.chr <- paste(readLines(query.path), collapse = "\n")
 
-                reactive.values$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
-                reactive.values$log <- paste0("Getting query from: ", query.path)
+                globals$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
+                globals$log <- paste0("Getting query from: ", query.path)
             }
     })
 
@@ -152,12 +153,12 @@ dw.srv <- function(input, output, session) {
     output$organisations.table <- DT::renderDT({
         # Transform to data table, which is more interactive.
         table.dt <- DT::datatable(
-            reactive.values$df
+            globals$df
           , editable = TRUE
           , colnames = unlist(
-              sys.cnf$modules[[reactive.values$active_module]]$table[["friendly names"]][
+              sys.cnf$modules[[globals$active_module]]$table[["friendly names"]][
                   which(
-                      sys.cnf$modules[[reactive.values$active_module]]$table[["friendly names"]] %in% names(reactive.values$df)
+                      sys.cnf$modules[[globals$active_module]]$table[["friendly names"]] %in% names(globals$df)
                   )
               ]
             )
@@ -168,12 +169,12 @@ dw.srv <- function(input, output, session) {
     output$contacts.table <- DT::renderDT({
         # Transform to data table, which is more interactive.
         table.dt <- DT::datatable(
-            reactive.values$df
+            globals$df
           , editable = TRUE
           , colnames = unlist(
-              sys.cnf$modules[[reactive.values$active_module]]$table[["friendly names"]][
+              sys.cnf$modules[[globals$active_module]]$table[["friendly names"]][
                   which(
-                      sys.cnf$modules[[reactive.values$active_module]]$table[["friendly names"]] %in% names(reactive.values$df)
+                      sys.cnf$modules[[globals$active_module]]$table[["friendly names"]] %in% names(globals$df)
                   )
               ]
             )
@@ -188,14 +189,36 @@ dw.srv <- function(input, output, session) {
         plot(plot.df)
     })
 
+    # Add an organisation.
+    shiny::observeEvent(
+        input$organisations.add_record
+      , {
+            shiny::showModal(
+              organisations.AddOrga("register_orga", c("contractor", "partner", "client"))
+            )
+        }
+    )
+
+    shiny::observeEvent(
+        input[["register_orga-add_record"]]
+      , {
+            globals$statement <- registerOrga("register_orga")
+            shiny::removeModal()
+        }
+
+    )
+
+
+
+
     # Keep track of Changes in the Database.
     shiny::observeEvent(
         input$organisations.table_cell_edit
       , {
             edits.lst <- input$organisations.table_cell_edit
             pk_col.chr <- "id_organisation"
-            changed_col.chr <- names(reactive.values$df)[edits.lst$col + 1]
-            changed_row.pk.num <- reactive.values$df[[pk_col.chr]][edits.lst$row]
+            changed_col.chr <- names(globals$df)[edits.lst$col + 1]
+            changed_row.pk.num <- globals$df[[pk_col.chr]][edits.lst$row]
 
             print(paste0("Changed table ...............", "organisation"))
             print(paste0("Name of changed column: .... ", changed_col.chr))
@@ -213,11 +236,11 @@ dw.srv <- function(input, output, session) {
             )
 
             #RMariaDB::dbExecute(mariadb.con, update.statement)
-            reactive.values$statement <- update.statement
+            globals$statement <- update.statement
         }
     )
 
-    output$log <- shiny::renderPrint({print(paste(input$log, reactive.values$log, sep = "\n"))})
+    output$log <- shiny::renderPrint({print(paste(input$log, globals$log, sep = "\n"))})
 
 
     # Contacts: Add record.
@@ -226,18 +249,19 @@ dw.srv <- function(input, output, session) {
       , { shiny::showModal(contacts.AddContact(ua.v)) }
     )
 
+
     shiny::observeEvent(
         input$contacts.add_record.add
       , {
 
             if(input$contacts.add_record.unix_account == "n.a.") {
-                reactive.values$statement <- sprintf(
-                    "INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('%s', '%s')"
+                globals$statement <- sprintf(
+                    "INSERT INTO `person` (`given_name`, `surname`) VALUES('%s', '%s')"
                   , input$contacts.add_record.given_name
                   , input$contacts.add_record.surname
                 )
             } else {
-                reactive.values$statement <- sprintf(
+                globals$statement <- sprintf(
                     "INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('%s', '%s', '%s')"
                   , input$contacts.add_record.given_name
                   , input$contacts.add_record.surname
@@ -254,48 +278,48 @@ dw.srv <- function(input, output, session) {
       , {
             sel.v <- input$contacts.table_rows_selected
             print(
-                reactive.values$df[sel.v, "id_person"]
+                globals$df[sel.v, "id_person"]
             )
         }
     )
 
 
     shiny::observeEvent(
-        reactive.values$statement
+        globals$statement
       , {
-          log_line.chr <- paste(
-              format(Sys.time(), format = "%Y.%m.%d %T")
-            , unix_user.chr
-            , "The following statement was executed"
-            , paste(reactive.values$statement, collapse = "\n")
-            , sep = " · "
+          log_line.v <- data.frame(
+              date = format(Sys.time(), format = "%Y.%m.%d %T")
+            , user = unix_user.chr
+            , event = "The following statement was executed"
+            , description = paste(globals$statement, collapse = "\n")
           )
 
-          fileConn <- file("/home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/log/lucentLIMS.log")
-          writeLines(log_line.chr, fileConn)
-          close(fileConn)
+          write.table(
+              log_line.v
+            , file = "/home/grindel/Entwicklung/lucentLIMS/lucentAndShiny/log/lucentLIMS.log"
+            , sep = " · "
+            , append = TRUE
+            , quote = FALSE
+            , row.names = FALSE
+            , col.names = FALSE
+          )
 
           tryCatch(
-              {RMariaDB::dbExecute(mariadb.con, reactive.values$statement)}
+              {RMariaDB::dbExecute(mariadb.con, globals$statement)}
             , error = function(e) {
                   message("SQL error: ", e)
-                  reactive.values$status_message <- e$message
-                  shiny::showModal( WarnAboutBadSQL(reactive.values) )
+                  globals$status_message <- e$message
+                  shiny::showModal(WarnAboutBadSQL(globals))
               }
             , warning = function(w) {
                   message("SQL warning: ", w$message)
-                  reactive.values$status_message <- w$message
+                  globals$status_message <- w$message
               }
           )
 
         }
     )
 
-
-    # Update the footer.
-    output$status_bar <- renderText({
-        reactive.values$status_message
-    })
 
     # Close the pool when quitting the server.
     session$onSessionEnded(function() {

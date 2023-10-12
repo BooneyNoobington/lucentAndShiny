@@ -1,1 +1,7 @@
-2023.10.10 14:55:58 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('Mario "The Skazdzude"', 'Schaupp', '')
+date · user · event · description
+2023.10.11 16:54:15 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`, `unix_account`) VALUES('Arschboy', 'McPherson')
+date · user · event · description
+2023.10.11 16:56:27 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`) VALUES('Arschboy', 'McPherson')
+2023.10.12 14:20:51 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Boomers Inc.,', 'bookers', 'contractor')
+2023.10.12 14:21:03 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Boomers Inc.' WHERE `id_organisation` = 10;
+2023.10.12 14:21:08 · grindel · The following statement was executed · UPDATE `organisation` SET `short_identifier` = 'boomers' WHERE `id_organisation` = 10;

@@ -30,6 +30,26 @@ WarnAboutBadSQL <- function(reactive.values) {
 
 
 ## -- Contacts -------------------------------------------------------------------------------------
+# Add a new organisation.
+organisations.AddOrga <- function(id, possible.v) {
+      ns <- shiny::NS(id)
+      shiny::modalDialog(
+          title = "Register Organisation"
+
+        , shiny::textInput(ns("identifier"), NULL, placeholder = "Company Name")
+        , shiny::textInput(ns("short_identifier"), NULL, placeholder = "Shorthand (optional)")
+        , shiny::selectInput(ns("connection"), "Connection (Optional)", possible.v)
+
+        , footer = shiny::tagList(
+              shiny::modalButton("Dismiss")
+            , shiny::actionButton(ns("add_record"), "Add Organisation")
+          )
+
+        , easyClose = TRUE
+        , fade = TRUE
+      )
+}
+
 
 # Add a new contact.
 contacts.AddContact <- function(ua.v) {
