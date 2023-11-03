@@ -14,7 +14,7 @@ shiny:
 
 
 modules:
-    organisations:
+    Organisations:
         title: Organisations
         table:
             name: organisation
@@ -24,8 +24,6 @@ modules:
                 Shorthand: short_identifier
                 Connection: connection
         sql: QUERY_ORGANISATIONS.SQL
-        context menu:
-            title: Manage Organisations
 
     people:
         title: Manage Employees, Customers, etc.
@@ -36,13 +34,12 @@ modules:
                 name: add_contact
                 caption: Add Contact
 
-    contacts:
+    Contacts:
         title: Contacts
         table:
-            name: organisation
+            name: person
             friendly names:
-                Company Number: id_organisation
-                Company Name: identifier
-                Shorthand: short_identifier
-                Connection: connection
+                Given Name: given_name
+                Surname: surname
+                Linux Account: unix_account
         sql: GET_ADDRESSES.SQL

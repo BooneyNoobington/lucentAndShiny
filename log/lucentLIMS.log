@@ -5,3 +5,19 @@ date · user · event · description
 2023.10.12 14:20:51 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Boomers Inc.,', 'bookers', 'contractor')
 2023.10.12 14:21:03 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Boomers Inc.' WHERE `id_organisation` = 10;
 2023.10.12 14:21:08 · grindel · The following statement was executed · UPDATE `organisation` SET `short_identifier` = 'boomers' WHERE `id_organisation` = 10;
+2023.10.12 15:33:43 · grindel · The following statement was executed · UPDATE `organisation` SET `short_identifier` = 'boomis' WHERE `id_organisation` = 10;
+2023.10.12 15:34:38 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Marios Handwerksleistungen AG', 'marios'', 'partner')
+2023.10.12 15:35:01 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Marios Handwerksdienstleistungen AG', 'marios', 'partner')
+2023.10.12 16:11:16 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Marios Handwerksdienstleistungen AG 2' WHERE `id_organisation` = 11;
+2023.10.12 16:14:07 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Rikes Import Export GmbH', 'rikers', 'contractor')
+2023.10.12 16:14:51 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Marios Handwerksdienstleistungen AG' WHERE `id_organisation` = 11;
+2023.10.12 16:19:33 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Beates Nähshop', 'bn', 'contractor')
+2023.10.12 16:21:28 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Hotel Auerhahn GmbH', 'auerhahn', 'client')
+2023.10.13 10:26:33 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Sexdudes Inc.', 'sexmex', 'contractor')
+2023.10.13 10:26:58 · grindel · The following statement was executed · INSERT INTO `organisation` (`identifier`, `short_identifier`, `connection`) VALUES ('Megaminds Inc.', 'megas', 'contractor')
+2023.10.13 10:27:15 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Non Offending Name Inc,' WHERE `id_organisation` = 15;
+2023.10.13 10:27:22 · grindel · The following statement was executed · UPDATE `organisation` SET `identifier` = 'Non Offending Name Inc.' WHERE `id_organisation` = 15;
+2023.10.13 10:27:27 · grindel · The following statement was executed · UPDATE `organisation` SET `short_identifier` = 'nonof' WHERE `id_organisation` = 15;
+2023.10.13 14:27:48 · grindel · The following statement was executed · UPDATE `organisation` SET `short_identifier` = 'Kotzboys' WHERE `id_organisation` = 8;
+2023.10.14 14:01:00 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`) VALUES('Norman', 'Reedus')
+2023.10.14 14:25:17 · grindel · The following statement was executed · INSERT INTO `person` (`given_name`, `surname`) VALUES('Flora Helin', 'Roth')

@@ -11,9 +11,9 @@ library(DBI)            # Database related functions.
 library(RMariaDB)       # Connecting to a datasbase.
 library(DT)             # Display tables in a nicer format.
 library(yaml)           # Getting the systems configuration.
-library(pool)
-library(readr)
-library(stringr)
+library(pool)           # Manage datbase connections,
+library(stringr)        # Advanced string manipulation.
+library(dplyr)          # Advanced data frame manipulation.
 
 
 
@@ -40,7 +40,6 @@ message("lucentLIMS is running for user: ", unix_user.chr)
 
 ### --- Modules and Helpers ------------------------------------------------------------------------
 source("db_intop.R")
-source("navbar_menu.R")
 source("module_selection.R")
 source("dialogs.R")
 source("server_modules.R")
@@ -70,10 +69,9 @@ dw.ui <- shiny::navbarPage(
     )
 
   , shiny::tabPanel(
-        "Log"
-      , shiny::titlePanel("What Happened During this Session")
-      , shiny::mainPanel(shiny::verbatimTextOutput("log"))
-  )
+        "Admin Info"
+      , shiny::verbatimTextOutput("admin_info.sql_info")
+    )
 
   , footer = shiny::tags$div(
         id = "status_bar"
@@ -87,100 +85,153 @@ dw.ui <- shiny::navbarPage(
 #### --- Define the server logic -------------------------------------------------------------------
 dw.srv <- function(input, output, session) {
 
-    # The central element of the data view is this table.
+    # Values that are rarely set (usually once per session).
     globals <- reactiveValues(
-        df = NULL
-      , query = NULL
-      , statement = NULL
-      , active_module = NULL
-      , log = NULL
+        statement = NULL
       , status_message = paste("User:", unix_user.chr, "Database connected")
     )
 
+    # The currently used query.
+    current_query.chr <- reactiveVal(NULL)
+
+    # The currently used DETAIL query.
+    current_detail_query.chr <- reactiveVal(NULL)
+
+    # The currenty executed statement.
+    statement.chr <- reactiveVal(NULL)
+
+    # Make the currently selected id or id's globally available.
+    sel_id.int_v <- reactiveVal(NULL)
+
+    # Global data frame. Holds whatever the current query retuns.
     df <- reactiveVal(NULL)
 
+    # Another global data frame. Only used for detail data.
+    df_detail <- reactiveVal(NULL)
+
+
+    ## -- Global Reactivity ------------------------------------------------------------------------
 
     # Observe the users choice of a module.
-    shiny::observe({
+    shiny::observeEvent(
+        input$main_bar
+      , {
+            tryCatch(
+                {
+                    # Load the default query for the selected module.
+                    current_query.chr(
+                        LoadDefaultQuery(sys.cnf$shiny[["query dir"]], shiny::req(input$main_bar))
+                    )
+                }
+              , error = function(e) {shiny::showModal(ReportGeneralError(e))}
+            )
+        }
+    )
 
-            if (shiny::req(input$main_bar) == "Organisations") {
-
-                globals$active_module <- "organisations"
-
-                globals$log <- paste0("Current tab is: ", globals$active_module)
-
-                # Get the data from the database.
-                query.path <- paste0(
-                    sys.cnf$shiny[["query dir"]], "/modules/", globals$active_module
-                  , "/"
-                  , sys.cnf$modules[[globals$active_module]]$sql
-                )
-
-                query.chr <- paste(readLines(query.path), collapse = "\n")
-
-                globals$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
-                globals$log <- paste0("Getting query from: ", query.path)
-
-                shiny::updateTextInput(
-                    session, "organisations.sql_info", value = paste(readLines(query.path), collapse = "\n")
-                )
-
-                # Take not of the original column names.
-                globals$names <- names(globals$dt)
-            }
-
-            if (shiny::req(input$main_bar) == "Contacts") {
-
-                globals$active_module <- "contacts"
-
-                globals$log <- paste0("Current tab is: ", globals$active_module)
-
-                # Get the data from the database.
-                query.path <- paste0(
-                    sys.cnf$shiny[["query dir"]], "/modules/", globals$active_module
-                  , "/"
-                  , sys.cnf$modules[[globals$active_module]]$sql
-                )
-
-                query.chr <- paste(readLines(query.path), collapse = "\n")
-
-                globals$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
-                globals$log <- paste0("Getting query from: ", query.path)
-            }
-    })
+    # Observer when the detail query has been changed.
+    shiny::observe(
+        current_detail_query.chr
+      , {
+            df_detail(RMariaDB::dbGetQuery(mariadb.con, current_detail_query()))
+        }
+    )
 
 
+    ## -- Organisations Module ---------------------------------------------------------------------
+
+    # Render the table.
     output$organisations.table <- DT::renderDT({
+
+        # Get the currently active modules.
+        am.chr <- shiny::req(input$main_bar)
+
         # Transform to data table, which is more interactive.
         table.dt <- DT::datatable(
-            globals$df
-          , editable = TRUE
+            # Remove id columns. They usually shouldn't be displayed.
+            df()  # <-- Reactive value that gets the output changed whenever changed itself.
+          , editable = TRUE  # Users generally can edit the table. TODO: Function that sets this valu accourding to UPDATE and INSERT privileges of current user?
+          # Don't use database names for the column headers but prettier names.
           , colnames = unlist(
-              sys.cnf$modules[[globals$active_module]]$table[["friendly names"]][
-                  which(
-                      sys.cnf$modules[[globals$active_module]]$table[["friendly names"]] %in% names(globals$df)
-                  )
+              sys.cnf$modules[[am.chr]]$table[["friendly names"]][
+                  which(sys.cnf$modules[[am.chr]]$table[["friendly names"]] %in% names(df()))
               ]
             )
-          , rownames = FALSE
+          , rownames = FALSE  # No running numers.
+          # Hide id columns. TODO: Dumb logic that just searches for columns starting with "id_".
+          , options = list(
+                columnDefs = list(
+                    list(targets = names(df())[which(grepl("^id_", names(df())))], visible = FALSE)
+                )
+            )
         )
+
     })
+
+    # Show a modal dialog with info about the current query.
+    shiny::observeEvent(
+        input$organisations.sql_info
+      , {shiny::showModal(DisplayQuery("query_info", current_query.chr()))}
+    )
+
+    shiny::observeEvent(
+        input[["query_info-requery"]]
+      , {
+            current_query.chr(input[["query_info-ace"]])
+            shiny::removeModal()
+        }
+    )
+
+
+    ## -- Contacts Module --------------------------------------------------------------------------
 
     output$contacts.table <- DT::renderDT({
+
+        # Get the currently active modules.
+        am.chr <- shiny::req(input$main_bar)
+
         # Transform to data table, which is more interactive.
         table.dt <- DT::datatable(
-            globals$df
-          , editable = TRUE
+            # Remove id columns. They usually shouldn't be displayed.
+            df()  # <-- Reactive value that gets the output changed whenever changed itself.
+          , editable = TRUE  # Users generally can edit the table. TODO: Function that sets this valu accourding to UPDATE and INSERT privileges of current user?
+          # Don't use database names for the column headers but prettier names.
           , colnames = unlist(
-              sys.cnf$modules[[globals$active_module]]$table[["friendly names"]][
-                  which(
-                      sys.cnf$modules[[globals$active_module]]$table[["friendly names"]] %in% names(globals$df)
-                  )
+              sys.cnf$modules[[am.chr]]$table[["friendly names"]][
+                  which(sys.cnf$modules[[am.chr]]$table[["friendly names"]] %in% names(df()))
               ]
             )
-          , rownames = FALSE
-        )
+          , rownames = FALSE  # No running numers.
+          # Hide id columns. TODO: Dumb logic that just searches for columns starting with "id_".
+          , options = list(
+                columnDefs = list(
+                    list(
+                      targets = names(df())[
+                          which(grepl("^id_", names(df())) | names(df()) == "recycle_bin")
+                      ]
+                    , visible = FALSE)
+                )
+            )
+          # Allow only single selections.
+          , selection = list(mode = "single", target = "row"))
+
+
     })
+
+    # Observe the selection.
+    shiny::observeEvent(
+        input$contacts.table_rows_selected  # Fire everytime a new line is selected.
+      , {
+            selected_id.int <- df()[input$contacts.table_rows_selected, "id_person"]
+            print(selected_id.int)
+            current_detail_query.chr(
+                stringr::str_replace(
+                    string =readLines(paste0(sys.cnf$shiny[["query dir"]], "/modules/Contacts/GET_ADDRESSES.SQL"))
+                  , pattern = "selected_id"
+                  , replacement = as.character(selected_id.int)
+                )
+            )
+        }
+    )
 
 
     # Example code: Plotting:
@@ -204,6 +255,8 @@ dw.srv <- function(input, output, session) {
       , {
             globals$statement <- registerOrga("register_orga")
             shiny::removeModal()
+            # Requery.
+            current_query.chr(paste(current_query.chr(), "-- requery after insert", sep = "\n"))
         }
 
     )
@@ -217,8 +270,8 @@ dw.srv <- function(input, output, session) {
       , {
             edits.lst <- input$organisations.table_cell_edit
             pk_col.chr <- "id_organisation"
-            changed_col.chr <- names(globals$df)[edits.lst$col + 1]
-            changed_row.pk.num <- globals$df[[pk_col.chr]][edits.lst$row]
+            changed_col.chr <- names(df())[edits.lst$col + 1]
+            changed_row.pk.num <- df()[[pk_col.chr]][edits.lst$row]
 
             print(paste0("Changed table ...............", "organisation"))
             print(paste0("Name of changed column: .... ", changed_col.chr))
@@ -239,8 +292,6 @@ dw.srv <- function(input, output, session) {
             globals$statement <- update.statement
         }
     )
-
-    output$log <- shiny::renderPrint({print(paste(input$log, globals$log, sep = "\n"))})
 
 
     # Contacts: Add record.
@@ -273,13 +324,17 @@ dw.srv <- function(input, output, session) {
         }
     )
 
+
+
+    # React when the current query is changed.
     shiny::observeEvent(
-        input$contacts.del_record
+        current_query.chr()
       , {
-            sel.v <- input$contacts.table_rows_selected
-            print(
-                globals$df[sel.v, "id_person"]
+            tryCatch(
+                {df(RMariaDB::dbGetQuery(mariadb.con, current_query.chr()))}
+              , error = function(e) {WarnAboutBadSQL(current_query.chr(), e)}
             )
+            output$admin_info.sql_info <-  shiny::renderPrint(current_query.chr())
         }
     )
 

@@ -4,6 +4,19 @@
 
 
 
+## -- Config Related Functions ---------------------------------------------------------------------
+LoadDefaultQuery <- function(query.dir, module.chr) {
+    message("Loading query from: ", paste0(query.dir, "/modules/", module.chr, "/DEFAULT.SQL"))
+    query.chr <- paste(
+        readLines(paste0(query.dir, "/modules/", module.chr, "/DEFAULT.SQL"))
+      , collapse = "\n"
+    )
+    message(query.chr)
+    return(query.chr)
+}
+
+
+
 ## -- General Helper Functions ---------------------------------------------------------------------
 
 # Transform a POSIXct-object into a string.
@@ -23,21 +36,14 @@ InterpretSQLDef <- function(sql.def) {
 
 ## -- Obtain data ----------------------------------------------------------------------------------
 
-# Get a data frame object from a select quersy.
-SelectToDF <- function(rv.lst, query.path, mariadb.con, mod_config.lst) {
-        # Populate the table.
-        #rv.lst$log <- paste(rv.lst$log, paste("Loading query from:", query.path), sep = "\n")
-
-        # Form the query.
-        # TODO: Implement placeholders.
-        query.chr <- paste(readLines(query.path), collapse = "\n")
-
-        # Export the results to a list of reactive values.
-        rv.lst$df <- RMariaDB::dbGetQuery(mariadb.con, query.chr)
+# Get a data frame object from a select query.
+SelectByList <- function(table.chr, kav.lst) {
+    query.chr <- sprintf("SELECT * FROM `%s` WHERE where_clause", table.chr)
 }
 
 
 
+# Insert a new record according to a list. The lists names represent the columns.
 InsertByList <- function(table.chr, kav.lst) {
 
     # Reform the values of the list into strings and numbers.

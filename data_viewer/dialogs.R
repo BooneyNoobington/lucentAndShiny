@@ -1,11 +1,41 @@
+### General Info Dialogs ---------------------------------------------------------------------------
+# Add a new organisation.
+DisplayQuery <- function(id, query.chr) {
+
+      library("shinyAce")
+
+      ns <- shiny::NS(id)
+      shiny::modalDialog(
+          title = "Query Information"
+
+        , shinyAce::aceEditor(
+              outputId = ns("ace")
+            , selectionId = ns("selection")
+            , value = query.chr
+            , placeholder = "Show a placeholder when the editor is empty ..."
+            , mode = "sql"
+          )
+
+        , easyClose = TRUE
+        , fade = TRUE
+
+        , footer = shiny::tagList(
+              shiny::modalButton("Dismiss")
+            , shiny::actionButton(ns("requery"), "Requery")
+          )
+      )
+}
+
+
+
 ### --- General Warning and Error Dialogs ----------------------------------------------------------
 
-WarnAboutBadSQL <- function(reactive.values) {
+WarnAboutBadSQL <- function(stmt.chr, w) {
     shiny::modalDialog(
           title = "SQL Error"
         , footer = NULL  # Remove the footer buttons
-        , paste("SQL statement was unsuccessful.", reactive.values$status_message)
-        , shiny::h4("Offending Statement:")
+        , paste("SQL statement was unsuccessful.", w$message)
+        , shiny::h4("Offending Statement")
         , shiny::tags$style(
                 shiny::HTML(
                     "
@@ -16,7 +46,7 @@ WarnAboutBadSQL <- function(reactive.values) {
                 )
         , shiny::div(
               class = "monospace-textarea"
-            , reactive.values$statement
+            , stmt.chr
           )
 
         , easyClose = TRUE  # Allow closing the dialog by clicking outside
@@ -25,8 +55,24 @@ WarnAboutBadSQL <- function(reactive.values) {
 }
 
 
+ReportGeneralError <- function(e) {
+    shiny::modalDialog(
+          title = "General Error"
+        , footer = NULL  # Remove the footer buttons
+        , paste("Something went wrong…")
+        , shiny::h5("System Error Message:")
+        , shiny::verbatimTextOutput(e$message)
+        , easyClose = TRUE  # Allow closing the dialog by clicking outside
+        , fade = TRUE
+    )
+}
+
+
 
 ### --- Module Specific Dialogs --------------------------------------------------------------------
+
+
+## -- Organisations --------------------------------------------------------------------------------
 
 
 ## -- Contacts -------------------------------------------------------------------------------------
