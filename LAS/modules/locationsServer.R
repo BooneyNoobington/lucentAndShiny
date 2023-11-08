@@ -11,7 +11,7 @@ library(shinyWidgets)
 source("./dbInterop.R")  # Handle queries and statements.
 
 # Module server function
-spatialServer <- function(id, db.conn, coltrans.lst) {
+locationsServer <- function(id, db.conn, coltrans.lst) {
     shiny::moduleServer(
         id
       , function(input, output, session) {
@@ -105,8 +105,8 @@ spatialServer <- function(id, db.conn, coltrans.lst) {
 
                         i <- input$master.tbl_rows_selected
 
-                        xcoord <- master.df()[i, "s.x"]
-                        ycoord <- master.df()[i, "s.y"]
+                        xcoord <- master.df()[i, "spot.x"]
+                        ycoord <- master.df()[i, "spot.y"]
 
                         # Render the map inside this observeEvent to ensure a reactive context.
                         output$master.map <- leaflet::renderLeaflet({
@@ -135,7 +135,7 @@ spatialServer <- function(id, db.conn, coltrans.lst) {
             # Clicking on the + button should open the dialogbox.
             shiny::observeEvent(
                 input[["master.ctrl-add_record"]]
-              , {shiny::showModal(DrawAddSpot("add.spot"))}
+              , {shiny::showModal(insertSpot("add.spot"))}
             )
 
             # A user can draw markers and polygons on the map.
@@ -154,7 +154,7 @@ spatialServer <- function(id, db.conn, coltrans.lst) {
 
                         # Pass the sessions namespace to the modal dialog.
                         # Otherwise its inputs aren't available.
-                        shiny::showModal(DrawAddSpot(session$ns, latitude.dbl, longitude.dbl))
+                        insertSpot(session$ns, latitude.dbl, longitude.dbl)
 
                         # Re-render the map. Clears all drawings.
                         # TODO: Very long and repetetive. Proxy or function.
@@ -187,22 +187,17 @@ spatialServer <- function(id, db.conn, coltrans.lst) {
 
                         crs.df <- pool::dbGetQuery(db.conn, "SELECT * FROM `crs`")
 
-                        shiny::showModal(
-                            DrawAddSite(ns = session$ns, borders = xy.v.chr, crs.df = crs.df)
-                        )
-
-
-
+                        insertSite(session$ns, borders = xy.v.chr, crs.df = crs.df)
                     }
 
             })
 
             # Ad a new spot.
             shiny::observeEvent(
-                input$add_record
+                input$spot.add_record
               , {
                     # Sanitize the user input.
-                    if(input$identifier == "") {ident <- NULL} else {ident <- input$identifier}
+                    if(input$name == "") {ident <- NULL} else {ident <- input$identifier}
                     if(input$description == "") {desc <- NULL} else {desc <- input$description}
 
                     master.stmt(
@@ -222,6 +217,42 @@ spatialServer <- function(id, db.conn, coltrans.lst) {
                 }
             )
 
+
+            # Ad a new site based on a selection on the map (not the default add control).
+            shiny::observeEvent(
+                input$site.add_record
+              , {
+
+                    master.stmt(
+                        CreateStatementByList(
+                            table.chr = "site"
+                          , kav.lst = list(
+                                name = input$site.name
+                              , description = input$site.description
+                                # Form a string out of the polygion definition.
+                              , borders = paste(
+                                    "PolygonFromText('POLYGON(("
+                                  , input$site.borders
+                                  , "))')"
+                                  , collapse = " "
+                                  , sep = ""
+                                )
+                              , id_crs = 1  # OpenStreetMap uses WGS 84 (id = 1)
+                            )
+                        )
+                    )
+
+                    shiny::removeModal()
+                }
+            )
+
+
+
+            # Link a spot to a site.
+            shiny::observeEvent(
+                input$link_spot
+              , {message("fired")}
+            )
 
 
         }

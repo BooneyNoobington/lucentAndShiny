@@ -4,7 +4,7 @@
 
 
 ## -- Sources --------------------------------------------------------------------------------------
-source("./modules/newCollectionUI.R")       # Specifications for the dialogs.
+source("./modules/newCollectionDialog.R")   # Specifications for the dialogs.
 source("./helpers.R")                       # Various helper functions.
 source("./dbInterop.R")                     # Database related functions.
 
@@ -38,9 +38,8 @@ newCollectionServer <- function(id, db.conn, sys.cnf) {
 
             # Display a Modal Dialog that asks for the respective information.
             shiny::showModal(
-                newCollectionUI(
-                      session$ns
-                    , paste(next.name.v, collapse = "·")
+                newCollectionDialog(
+                      paste(next.name.v, collapse = "·")
                     , objects.v
                     , matrices.v
                     , col_classes.v

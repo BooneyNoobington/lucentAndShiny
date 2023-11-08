@@ -1,6 +1,5 @@
 SELECT                  s.`name` AS "site.name"
                       , s.`description` AS "site.description"
-                      , s.`site_class` AS "site.site_class"
                       , va.`__house__number` AS "v_address.__house__number"
                       , va.`__house__number_addition` AS "v_address.__house__number_addition"
                       , va.`__street__name` AS "v_address.__street__name"

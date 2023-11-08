@@ -17,7 +17,9 @@ CreateStatementByList <- function(table.chr, kav.lst) {
                 return(as.character(x))
             } else if (is.null(x)) {  # Don't do anything aginst NULL here. *
                 return(NULL)
-            } else {  # List element is something else.
+            } else if (startsWith(x, "Polygon")){  # This is a MariaDB related function.
+                return(x)  # Don't enclose in quotation marks.
+            } else {  # List element is something else - probably text.
                 return(paste("'", x, "'", sep = ""))
             }
         }
@@ -176,4 +178,30 @@ GetMandatories <- function(db.conn, table.chr) {
 
     # Return the mandatory values.
     return(candidates.v)
+}
+
+
+
+### --- Compute PK (ID) from Name ----------------------------------------------
+
+# Normally all tables in lucentLIMS have a "name" and an "id" field.
+# The name is unique just like the id but isn't used for joins e.g. but
+# rather as a readable identifier.
+GetIDFromName <- function(db.conn, name.chr, table.chr, name.col = "name") {
+    
+    # Get the primary key field for "table.chr".
+    pk.col <- GetPK(db.conn, table.chr)
+    
+    # Query the id, fitting to "name.chr".
+    name.query <- glue::glue_sql(
+        "SELECT {`pk`} FROM {`t`} WHERE {`nc`} = {n}"
+      , .con = db.conn
+      , pk = pk.col, t = table.chr, nc = name.col, n = name.chr
+    )
+    
+    # Grab the results of the query.
+    id.df <- pool::dbGetQuery(db.conn, name.query)
+    
+    
+    return(id.df[[pk.col]])
 }

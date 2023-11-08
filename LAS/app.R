@@ -12,22 +12,34 @@ library(shinydashboard)             # Building the user interface.
 library(DT)                         # Advanced table output.
 library(ini)                        # Load system configuration.
 library(leaflet)                    # Dispaly spatial data.
+library(shinyAce)                   # Show a small editor.
 
 # Source UI specifications.
 source("./modules/sidebarUI.R")
 source("./modules/collectionsUI.R")
-source("./modules/spatialUI.R")
+source("./modules/locationsUI.R")
 
 # Source server logic.
-source("./modules/spatialServer.R")
+source("./modules/locationsServer.R")
 source("./modules/collectionsServer.R")
 
 # Load system configuration.
 sys.cnf <- ini::read.ini("./conf/las.ini")
+
+# Translate the "general" section into options.
+if (!is.null(sys.cnf$general)) options(sys.cnf$general)
+
 coltrans.cnf <- ini::read.ini("./conf/coltrans.ini")
 
 # Determine current user.
 unix_user.chr <- Sys.getenv("LOGNAME")
+
+
+
+### --- Translations / Internationalizations -------------------------------------------------------
+library(shiny.i18n)                 # Translation package.
+i18n <- shiny.i18n::Translator$new(translation_csvs_path = "./translations")
+i18n$set_translation_language("de")
 
 
 
@@ -47,14 +59,14 @@ ui <- shinydashboard::dashboardPage(
     shinydashboard::dashboardHeader(title = "lucentLIMS")
 
     # Display the sidebar. Its contents are defined via modules.
-  , shinydashboard::dashboardSidebar(DrawSidebarMenu())
+  , shinydashboard::dashboardSidebar(DrawSidebarMenu(i18n))
 
 
     # Draw the bodies depending on the selected item in the sidebar.
   , shinydashboard::dashboardBody(
         shinydashboard::tabItems(
-            shinydashboard::tabItem(tabName = "collections", DrawCollectionsBody("collections"))
-          , shinydashboard::tabItem(tabName = "locations", DrawSpatialUI("spatial"))
+            shinydashboard::tabItem(tabName = "collections", collectionsUI("collections"))
+          , shinydashboard::tabItem(tabName = "locations", locationsUI("locations"))
         )
     )
 
@@ -64,7 +76,7 @@ ui <- shinydashboard::dashboardPage(
 
 ### --- Server logic -------------------------------------------------------------------------------
 server <- function(input, output, session) {
-      spatialServer("spatial", mariadb.con, coltrans.cnf$spatial)
+      locationsServer("locations", mariadb.con, coltrans.cnf$locations)
       collectionsServer("collections", mariadb.con, coltrans.cnf$collections, sys.cnf)
 }
 

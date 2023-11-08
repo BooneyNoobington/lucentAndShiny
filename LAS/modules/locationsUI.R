@@ -2,12 +2,12 @@
 ### --- UI Module for the "Spatial" Module ---------------------------------------------------------
 ### ------------------------------------------------------------------------------------------------
 
-source("./modules/defaultControlsUI.R")
-source("./modules/spatialDialogsUI.R")
+source("./modules/defaultCtrlUI.R")
+source("./modules/locationsDialogs.R")
 
 
 
-DrawSpatialUI <- function(id) {
+locationsUI <- function(id) {
 
     # Namespacing.
     ns <- shiny::NS(id)
@@ -20,7 +20,10 @@ DrawSpatialUI <- function(id) {
                       title = "Spots"
                     , status = "primary"
                     , DT::DTOutput(ns("master.tbl"))
-                    , DrawDefaultControls(ns("master.ctrl"))
+                    , shiny::div(
+                          shiny::div(style="display: inline-block; width: 150px ;", defaultCtrlUI(ns("master.ctrl")))
+                        , shiny::div(style="display: inline-block; width: 75px ;", shiny::actionButton(ns("link_spot"), NULL, shiny::icon("link")))
+                      )
                 )
 
                   # Second box displays an Open Street map segment.
@@ -35,7 +38,7 @@ DrawSpatialUI <- function(id) {
                 title = "Sites"
               , width = 12
               , DT::DTOutput(ns("sites.tbl"))
-              , DrawDefaultControls(ns("sites.ctrl"))
+              , defaultCtrlUI(ns("sites.ctrl"))
             )
         )
     )

@@ -2,11 +2,11 @@
 ### --- UI Module for the "Collections" Module -----------------------------------------------------
 ### ------------------------------------------------------------------------------------------------
 
-source("./modules/defaultControlsUI.R")
+source("./modules/defaultCtrlUI.R")
 
 
 
-DrawCollectionsBody <- function(id) {
+collectionsUI <- function(id) {
 
     # Namespacing.
     ns <- shiny::NS(id)
@@ -24,7 +24,7 @@ DrawCollectionsBody <- function(id) {
                     , DT::DTOutput(ns("collections.tbl"))
 
                       # Have default controls and contextual controls in one row.
-                    , DrawDefaultControls(ns("collections.ctrl"))
+                    , defaultCtrlUI(ns("collections.ctrl"))
                 )
 
                 # Second box displays an Open Street map segment.
@@ -45,13 +45,13 @@ DrawCollectionsBody <- function(id) {
                     shiny::tabPanel(
                           "Values"
                         , DT::DTOutput(ns("values.tbl"))
-                        , DrawDefaultControls(ns("sites.ctrls"))
+                        , defaultCtrlUI(ns("sites.ctrls"))
                     )
 
                   , shiny::tabPanel(
                           "Actions"
                         , DT::DTOutput(ns("actions.tbl"))
-                        , DrawDefaultControls(ns("actions.ctrl"))
+                        , defaultCtrlUI(ns("actions.ctrl"))
                     )
                 )
 

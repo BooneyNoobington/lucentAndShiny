@@ -4,7 +4,7 @@
 
 
 
-DrawDefaultControls <- function(id) {
+defaultCtrlUI <- function(id) {
 
     # Namespacing.
     ns <- shiny::NS(id)
@@ -26,7 +26,6 @@ DrawDefaultControls <- function(id) {
         .button-container {
             display: flex;
             flex-direction: row;
-            gap: 10px; /* Adjust the gap as needed */
         }
     "
 
