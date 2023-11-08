@@ -177,3 +177,45 @@ GetMandatories <- function(db.conn, table.chr) {
     # Return the mandatory values.
     return(candidates.v)
 }
+
+
+
+# --- List of Choices with Names and descriptions --------------------------------------------------
+
+# This function returns a character vector with ids, names and a record description (if available).
+GetIDNameDescVec <- function(
+    db.conn
+  , table.chr
+  , id.col = paste0("id_", table.chr)
+  , name.col = "name"
+  , desc.col = "description"
+)
+{
+
+    # Formulate a query.
+    query.chr <- sprintf(
+        "SELECT %s, %s, %s FROM %s ORDER BY %s", id.col, name.col, desc.col, table.chr, id.col
+    )
+    
+    # Create a dataframe that holds all ids, names and a description for
+    # the record.
+    choice.df <- pool::dbGetQuery(db.conn, query.chr)
+    
+    # Return a character vector that holds pasted together strings.
+    return(
+        choices.v <- apply(
+            X = choice.df
+          , MARGIN = 1
+          , FUN = function(x) {
+                paste(
+                    x[id.col], ": "  # Leading ID then colon.
+                  , "'" , x[name.col], "'"  # Name in qutation marks.
+                    # Only use the description field if there is something in it.
+                  , ifelse(!is.na(x[desc.col]), paste0("(", x[desc.col] , ") "), NA)
+                  , sep = ""
+                )
+            }
+        )
+    )
+    
+}
