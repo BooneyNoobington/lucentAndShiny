@@ -1,8 +1,8 @@
-SELECT          s.`identifier` AS "s.identifier"
-              , s.`description` AS "s.description"
-              , s.`x` AS "s.x"
-              , s.`y` AS "s.y"
-              , c.`identifier` AS "c.crs"
+SELECT          s.`name` AS "spot.name"
+              , s.`description` AS "spot.description"
+              , s.`x` AS "spot.x"
+              , s.`y` AS "spot.y"
+              , c.`name` AS "crs.name"
 --              , c.`epsg` AS "c.epsg"
 FROM            `spot` s
         JOIN    `crs` c

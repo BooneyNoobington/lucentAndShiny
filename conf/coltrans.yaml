@@ -1,0 +1,25 @@
+---
+locations:
+    spots_table:
+        Spot: spot.name
+        Description: spot.description
+        x Coordinate: spot.x
+        y Coordinate: spot.y
+        Coordinate Reference System: crs.name
+    sites_table:
+        Site: site.name
+        Description: site.description
+        House No.: v_address.__house__number
+        Addition: v_address.__house__number_addition
+        Street: v_address.__street__name
+        City:  v_address.__city__name
+        District: v_address.__district__name
+        ZIP: v_address.__district__zip
+
+collections:
+    collection_table:
+        Collection ID: collection.id_collection
+        Readable Number: collection.name
+        Investigation: object.name
+        Matrix: matrix.name
+---
