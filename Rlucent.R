@@ -13,16 +13,18 @@ library(purrr)
 library(RMariaDB)
 library(digest)
 library(rio)
-library(readODS)
+library(openxlsx)
+library(yaml)
 
 
 
 ### Further preparations ###########################################################################
-setwd("/home/grindel/Entwicklung/lucentAndShiny")
+setwd("/home/lucent/Entwicklung/lucentAndShiny")
 
 sys.cnf <- yaml::read_yaml("./conf/las.yaml")  # Load config
 
 source("./db_functions.R")
+source("./helpers.R")
 
 unix_user.chr <- Sys.getenv("LOGNAME")
 
@@ -32,7 +34,7 @@ db.conn <- DBI::dbConnect(
       RMariaDB::MariaDB()
     , dbname = sys.cnf$database$schema
     , unix.sock = sys.cnf$database$socket
-    , username = "grindel"
+    , username = sys.cnf$database$user
 )
 
 
@@ -60,87 +62,45 @@ users.df <- DBI::dbReadTable(conn = db.conn, name = "person")
 
 
 ### Fill in some demo data #########################################################################
-for (table.chr in schema.info.df$TABLE_NAME) {
 
-    tryCatch({
-        
-        # Write the data frame to the ODS file with the table name as the sheet name
-        readODS::write_ods(
-            DBI::dbReadTable(db.conn, table.chr)
-          , path = glue::glue("./share/demo_data/{table.chr}.ods")
-        )
-        
-        message("Successfully exported table: ", table.chr)
-        
-    }, error = function(e) {
-        message("Error exporting table: ", table.chr, " - ", e$message)
-    })
-    
+# Create an Excel workbook to hold the mostly empty tables.
+workbook.fileconn <- openxlsx::createWorkbook()
+
+# Loop through each table and add it as a new sheet
+for (table in schema.info.df$TABLE_NAME) {
+  # Fetch table data
+  data <- DBI::dbReadTable(db.conn, table)
+  
+  # Add sheet and write data
+  openxlsx::addWorksheet(workbook.fileconn, table)
+  openxlsx::writeData(workbook.fileconn, sheet = table, data)
 }
 
-
-### Some examples ##################################################################################
-
-
-## Insert some initial demo data ###################################################################
-
-initial_org <- list(name = "Redhsoft Inc", shorthand = "Redhsoft")
-
-DBI::dbExecute(
-    db.conn
-  , glue::glue_sql(
-        .con = db.conn
-      , "
-        INSERT INTO organization (name, shorthand)  
-        VALUES({initial_org$name}, {initial_org$shorthand});
-        "
-    )
+# Save the workbook
+openxlsx::saveWorkbook(
+    workbook.fileconn
+  , file = "./share/all_tables.xlsx"
+  , overwrite = TRUE
 )
 
 
-DBI::dbExecute(
-    db.conn
-  , glue::glue_sql(
-        "
-        INSERT INTO person (given_name, surname, unix_account, id_organization) 
-        VALUES('Booney', 'Noobington', 'grindel', {idByList(initial_org, 'organization')})
-        "
-    )
-)
+
+### Insert demo data by YAML #######################################################################
 
 
-## Insert a new user ###############################################################################
-
-# This requires that at least one user is already available
-insertByList(
-    l = list(given_name = "Homer", surname = "Simpson", unix_account = "s7e23")
-  , tab = "person"
-    # You can grab the current users id dynamically by comparing the unix account to
-    # the user table
-  , user_id = 23
-  , note = "Manual insert for demon purposes."
-)
+## First tables with no references (foreign keys) ##################################################
+yaml::yaml.load_file("../lucentBase/demo_data/demo_data_without_references.yaml") %>%
+    purrr::walk2(., names(.), function(records, tab) {
+        purrr::walk(records, ~ insertByList(l = .x, tab = tab, user_id = 1))
+    })
 
 
-## Insert a new buiseness partner ##################################################################
-new_company.list <- list(
-    name = "Weyland Yutani"
-  , shorthand = "WY"
-  , connection = "partner"
-)
-
-insertByList(
-    l = new_company.list
-  , tab = "organization"
-  , user_id = 1
-)
+## Then various other tables with fks ##############################################################
+readr::read_file("../lucentBase/demo_data/demo_data_level_1.yaml") %>%
+    glue::glue() %>%
+        yaml::yaml.load() %>%
+            purrr::walk2(., names(.), function(records, tab) {
+                purrr::walk(records, ~ insertByList(l = .x, tab = tab, user_id = 1))
+            })
 
 
-## Attach the new company to the added user ########################################################
-update.list <- list(
-    given_name = "John"  # Stays the same
-  , surname = "Doe"  # Stays the same
-  , id_organization = 2  # To be set
-)
-
-updateByList(updates = update.list, tab = "person", id_tab = 12)

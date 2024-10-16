@@ -1,63 +1,62 @@
 ### --- Custom Numbering -------------------------------------------------------
 
-# Vectorize system configuraiton.
-VectorizeNumberingSpec <- function(numbering.lst) {
-
-    for (i in 1:length(numbering.lst)) {
-        numbering.lst[i] <- strsplit(numbering.lst[[i]], " ")
-    }
-
-    return(numbering.lst)
-}
-
-
-
-# Get the currently "highest" identifier.
-GetMaxIdentifier <- function(db.conn, numbering.lst) {
+# Get the next identifier.
+getNextIdentifier <- function(
+        tab = "collection"
+      , name_col = "name"
+      , id_col = glue::glue("id_{tab}")
+      , sep = "-"
+)
+{
 
     # To predict the next collection identifier,
     # one needs to know the recent one.
-    recent_ident.v <- pool::dbGetQuery(
-        db.conn
-      , paste(readLines("./SQL/QUERY_MAX_COLLECTION_NAME.SQL"), collapse = " ")
-    )$name
-
-    # Query is unsuccesful. Probably first ever colleciton.
-    if (length(recent_ident.v) == 0) return(-1)
-
-    # Return the selected identifier.
-    # Transform it to a vector first.
-    return(strsplit(recent_ident.v, "·")[[1]])
-}
-
-
-
-# A bit more tricky. Get the next identifier.
-GetNextIdentifier <- function(recent_ident.chr, numbering.lst) {
+    DBI::dbGetQuery(
+          db.conn
+        , glue::glue_sql(
+              .con = db.conn
+            , "
+              SELECT        {`name_col`}
+              FROM          {`tab`}
+              WHERE         {`id_col`} = (
+                    SELECT MAX({`id_col`}) FROM {`tab`}
+              )
+              "
+          )
+    ) %>%
+        dplyr::pull(name_col) -> name.max.chr
 
     # What happens if there isn't an identifier yet?
-    # Pick the first possible one from numbering.lst.
-    if(!is.character(recent_ident.chr)) {
-        return(as.vector(sapply(numbering.lst,"[[",1)))
+    # Pick the first possible one from sys.cnf$enumeration.
+    if(identical(name.max.chr, character(0))) {
+        return(as.vector(sapply(sys.cnf$enumeration,"[[",1)))
     }
+    
+    # Turn the character into a vector
+    name.max.chr.v <- strsplit(x = name.max.chr, split = sep)[[1]]
 
-    # How many sections does the safes.list have?
-    n <- length(numbering.lst)
-
-    # Sanity check if recent_ident.chr is usable.
-    if(! length(recent_ident.chr) == n) {
+    # Keys in the numbering scheme
+    n <- length(sys.cnf$enumeration)
+    
+    print(n)
+    print(name.max.chr.v)
+    
+    # Sanity check if name.max.chr is usable.
+    if(length(name.max.chr.v) != n) {
         stop("Recent identifier has different length than numbering list.")
     }
 
     # Where is the current safe "located"? At which list indices?
     recent_ident.pos <- numeric(0)
 
-    for (i in 1:n) recent_ident.pos <- c(recent_ident.pos,
-           match(recent_ident.chr[i], numbering.lst[[i]]))
+    for (i in 1:n) recent_ident.pos <- c(
+        recent_ident.pos
+      , match(name.max.chr.v[i], sys.cnf$enumeration[[i]])
+    )
 
     # Create a matrix that contains all possible next safe positions.
     possible.next.mat <- t(  # Transpose the matrix.
-      matrix(rep(recent_ident.pos, n), nrow = n) + diag(n)
+        matrix(rep(recent_ident.pos, n), nrow = n) + diag(n)
     )[c(n:1),]  # And flip it upside down.
 
     # Set the lower triangle of this matrix to 1
@@ -69,10 +68,10 @@ GetNextIdentifier <- function(recent_ident.chr, numbering.lst) {
 
         # Build a vector for the possible next …
         possible.next.v <- character(0)
-        # … by looping over all sections in numbering.lst and the corresponding
+        # … by looping over all sections in sys.cnf$enumeration and the corresponding
         # index "j".
         for (j in 1:n) possible.next.v <- c(possible.next.v,
-                 numbering.lst[[j]][possible.next.mat[i,j]])
+                 sys.cnf$enumeration[[j]][possible.next.mat[i,j]])
         
         # Return the first possibility that doesn't contain an "NA".
         if(!any(is.na(possible.next.v))) return(possible.next.v)
