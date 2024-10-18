@@ -4,12 +4,12 @@
 
 
 ## -- Log change -----------------------------------------------------------------------------------
-logChange <- function(tab, id_record, change, user_id, verbose = FALSE, ...) {
+logChange <- function(db.conn, schema_info, tab, id_record, change, user_id, verbose = FALSE, ...) {
     
     additional_args = list(...)
     
     # Identify the column name for the primary key of the changed table
-    schema.info.df %>%
+    schema_info %>%
         dplyr::filter(TABLE_NAME == tab) %>%
             dplyr::pull(COLUMN_NAME) -> pk
     
@@ -20,6 +20,8 @@ logChange <- function(tab, id_record, change, user_id, verbose = FALSE, ...) {
     ) %>%
         paste(collapse = "") %>%
             digest::digest(algo = "sha256") -> cs
+    
+    if (verbose) print(cs)
     
     # Form the log statement
     if(!exists("logtab")) logtab <- glue::glue("l_{tab}")  # Assume generic logtable name
@@ -60,7 +62,7 @@ logChange <- function(tab, id_record, change, user_id, verbose = FALSE, ...) {
 
 
 ## -- Get ID by list -------------------------------------------------------------------------------
-idByList <- function(l, tab) {
+idByList <- function(db.conn, l, tab) {
     
     # Define the WHERE parameters
     glue::glue_sql_collapse(
@@ -85,7 +87,19 @@ idByList <- function(l, tab) {
             .con = db.conn
           , "SELECT {`pk`} FROM {`tab`} WHERE {where.stmt}"
         )
-    ) %>% dplyr::pull(pk)
+    ) %>% dplyr::pull(pk) -> id
+    
+    
+    # Return -1 if there is more than one id found and throw a warning
+    if(length(id) > 1) {
+        warning(
+            glue::glue("WARNING: More than one result für for id search in {tab}.")
+        )
+        return(-1)
+    }
+    
+    # Return -1 if no id can be determined
+    ifelse(identical(id, integer(0)), -1, id)
 
 }
 
@@ -103,7 +117,7 @@ idByList <- function(l, tab) {
 
 # Returns:
 # - id of inserted row
-insertByList <- function(l, tab, user_id, verbose = FALSE, ...)
+insertByList <- function(db.conn, l, tab, user_id, verbose = FALSE, ...)
 {
     # Prepare statement
     stmt <- glue::glue_sql(
@@ -144,7 +158,7 @@ insertByList <- function(l, tab, user_id, verbose = FALSE, ...)
     
     
     # Log the insert
-    logChange(tab, latest_id, "insert", user_id, ...)
+    logChange(db.conn = db.conn, tab, latest_id, "insert", user_id, ...)
 
     
     return(latest_id)
@@ -156,7 +170,8 @@ insertByList <- function(l, tab, user_id, verbose = FALSE, ...)
 # Expectations as above
 
 updateByList <- function(
-      updates
+      db.conn
+    , updates
     , id_tab
     , tab
     , user_id
@@ -176,7 +191,7 @@ updateByList <- function(
         lapply(
               names(updates)
             , function(col) {
-                  glue::glue_sql("{`col`} = {updates[[col]]}", .con = db.conn)
+                  glue::glue_sql(.con = db.conn, "{`col`} = {updates[[col]]}")
               }
         )
       , sep = ","
